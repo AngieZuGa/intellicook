@@ -1,8 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intellicook/models/user.dart';
 import 'package:intellicook/helpers/database.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+
 
 class AuthService {
   static const String _userIdKey = 'user_id';
@@ -102,12 +101,7 @@ class AuthService {
     }
   }
 
-  static Future<void> deleteDatabaseManually() async {
-  final dbPath = await getDatabasesPath();
-  final path = join(dbPath, 'intelli_cook.db');
-  await deleteDatabase(path);
-  print('🗑️ Base de datos eliminada manualmente: $path');
-}
+
 }
 
 // Extensión para User (agregar al archivo user.dart)

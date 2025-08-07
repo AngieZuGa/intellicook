@@ -1,4 +1,5 @@
 import 'package:intellicook/models/ingredient.dart';
+import 'package:intellicook/models/recipe.dart';
 import 'package:intellicook/models/user.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -19,12 +20,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    final db = await openDatabase(path, version: 1, onCreate: _createDB);
-
-    final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
-    print('📋 Tablas encontradas en la base de datos: $tables');
-
-    return db;
+    return await openDatabase(path, version: 2, onCreate: _createDB, onUpgrade: _onUpgrade);
   }
 
   Future _createDB(Database db, int version) async {
@@ -38,30 +34,55 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-    CREATE TABLE users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    )
+      CREATE TABLE favorite_recipes (
+        id INTEGER PRIMARY KEY,
+        title TEXT NOT NULL,
+        image TEXT NOT NULL,
+        readyInMinutes INTEGER NOT NULL,
+        difficulty TEXT NOT NULL,
+        usedIngredients TEXT NOT NULL,
+        missedIngredients TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     ''');
 
     await db.execute('''
-    CREATE TABLE favorites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      recipe_id INTEGER NOT NULL,
-      title TEXT NOT NULL,
-      image TEXT NOT NULL,
-      ready_in_minutes INTEGER NOT NULL,
-      difficulty TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users (id)
-    )
+      CREATE TABLE user_profile (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        preferences TEXT
+      )
     ''');
   }
 
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE favorite_recipes (
+          id INTEGER PRIMARY KEY,
+          title TEXT NOT NULL,
+          image TEXT NOT NULL,
+          readyInMinutes INTEGER NOT NULL,
+          difficulty TEXT NOT NULL,
+          usedIngredients TEXT NOT NULL,
+          missedIngredients TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE user_profile (
+          id INTEGER PRIMARY KEY,
+          name TEXT,
+          email TEXT,
+          preferences TEXT
+        )
+      ''');
+    }
+  }
+
+  // Métodos para ingredientes
   Future<int> insertIngredient(Ingredient ingredient) async {
     final db = await instance.database;
     return await db.insert('ingredients', ingredient.toMap());
@@ -88,29 +109,78 @@ class DatabaseHelper {
     );
   }
 
-  Future<int> insertUser(User user) async {
+  // Métodos para recetas favoritas
+  Future<int> insertFavoriteRecipe(Recipe recipe) async {
     final db = await instance.database;
-    return await db.insert('users', user.toMap());
+    return await db.insert('favorite_recipes', {
+      'id': recipe.id,
+      'title': recipe.title,
+      'image': recipe.image,
+      'readyInMinutes': recipe.readyInMinutes,
+      'difficulty': recipe.difficulty,
+      'usedIngredients': recipe.usedIngredients.join(','),
+      'missedIngredients': recipe.missedIngredients.join(','),
+    });
   }
 
-  Future<User?> getUserByEmail(String email) async {
+  Future<List<Recipe>> getFavoriteRecipes() async {
+    final db = await instance.database;
+    final result = await db.query('favorite_recipes', orderBy: 'created_at DESC');
+    return result.map((map) => Recipe(
+      id: map['id'] as int,
+      title: map['title'] as String,
+      image: map['image'] as String,
+      readyInMinutes: map['readyInMinutes'] as int,
+      difficulty: map['difficulty'] as String,
+      usedIngredients: (map['usedIngredients'] as String).split(','),
+      missedIngredients: (map['missedIngredients'] as String).split(','),
+    )).toList();
+  }
+
+  Future<bool> isFavoriteRecipe(int recipeId) async {
     final db = await instance.database;
     final result = await db.query(
-      'users',
-      where: 'email = ?',
-      whereArgs: [email],
-      limit: 1,
+      'favorite_recipes',
+      where: 'id = ?',
+      whereArgs: [recipeId],
     );
+    return result.isNotEmpty;
+  }
 
+  Future<int> deleteFavoriteRecipe(int recipeId) async {
+    final db = await instance.database;
+    return await db.delete('favorite_recipes', where: 'id = ?', whereArgs: [recipeId]);
+  }
+
+  // Métodos para perfil de usuario
+  Future<int> saveUserProfile(String name, String email) async {
+    final db = await instance.database;
+    return await db.insert('user_profile', {
+      'id': 1,
+      'name': name,
+      'email': email,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, String>?> getUserProfile() async {
+    final db = await instance.database;
+    final result = await db.query('user_profile', where: 'id = ?', whereArgs: [1]);
     if (result.isNotEmpty) {
-      return User.fromMap(result.first);
+      return {
+        'name': result.first['name'] as String,
+        'email': result.first['email'] as String,
+      };
     }
     return null;
   }
-
-  Future<bool> emailExists(String email) async {
-    final user = await getUserByEmail(email);
-    return user != null;
+  
+  Future<int> insertUser(User user) async {
+    final db = await instance.database;
+    return await db.insert(
+      'users',
+      user.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<User?> authenticateUser(String email, String password) async {
@@ -121,16 +191,37 @@ class DatabaseHelper {
       whereArgs: [email, password],
       limit: 1,
     );
-
     if (result.isNotEmpty) {
       return User.fromMap(result.first);
     }
     return null;
   }
 
+  Future<int?> getIngredientsCount() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM ingredients');
+    return Sqflite.firstIntValue(result);
+  }
+
+  Future<int?> getFavoritesCount() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM favorites');
+    return Sqflite.firstIntValue(result);
+  }
 
   Future close() async {
     final db = await instance.database;
     db.close();
+  }
+
+  Future<bool> emailExists(String email) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
+    return result.isNotEmpty;
   }
 }

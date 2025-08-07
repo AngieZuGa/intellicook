@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:intellicook/main.dart';
+// Ensure that MyApp is defined in main.dart and is being exported.
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

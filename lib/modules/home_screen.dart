@@ -6,18 +6,34 @@ import 'package:intellicook/modules/recipe_suggestion.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final List<Widget> _screens = [
-    Inventory(),
-    RecipeSuggestion(),
-    Favorites(),
-    Profile(),
-  ];
+
+  // Método para cambiar el índice desde los hijos
+  void changeTabIndex(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      Inventory(),
+      RecipeSuggestion(),
+      Favorites(),
+      Profile(changeTab: (index) => changeTabIndex(index)),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
