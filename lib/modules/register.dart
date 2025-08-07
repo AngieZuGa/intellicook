@@ -50,11 +50,9 @@ class _RegisterState extends State<Register> {
       );
     } else {
       // Mostrar error
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
       );
     }
   }
@@ -77,23 +75,17 @@ class _RegisterState extends State<Register> {
               children: [
                 const Text(
                   'Crear nueva cuenta',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Completa la información para registrarte',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Campo de nombre
                 TextFormField(
                   controller: _nameController,
@@ -113,7 +105,7 @@ class _RegisterState extends State<Register> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Campo de email
                 TextFormField(
                   controller: _emailController,
@@ -134,7 +126,7 @@ class _RegisterState extends State<Register> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Campo de contraseña
                 TextFormField(
                   controller: _passwordController,
@@ -143,8 +135,13 @@ class _RegisterState extends State<Register> {
                     labelText: 'Contraseña',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     border: const OutlineInputBorder(),
                   ),
@@ -159,7 +156,7 @@ class _RegisterState extends State<Register> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Campo de confirmar contraseña
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -168,8 +165,15 @@ class _RegisterState extends State<Register> {
                     labelText: 'Confirmar contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
                     ),
                     border: const OutlineInputBorder(),
                   ),
@@ -184,7 +188,7 @@ class _RegisterState extends State<Register> {
                   },
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Botón de registro
                 ElevatedButton(
                   onPressed: _isLoading ? null : _register,
@@ -199,7 +203,9 @@ class _RegisterState extends State<Register> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
@@ -209,6 +215,7 @@ class _RegisterState extends State<Register> {
                 ),
                 const SizedBox(height: 16),
                 
+
                 // Enlace a login
                 TextButton(
                   onPressed: () => Navigator.pop(context),

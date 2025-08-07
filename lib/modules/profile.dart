@@ -42,8 +42,10 @@ class _ProfileState extends State<Profile> {
               child: const Text('Cerrar Sesión'),
               onPressed: () async {
                 await AuthService.logout();
+                // ignore: use_build_context_synchronously
                 Navigator.of(context).pop();
                 Navigator.pushReplacement(
+                  // ignore: use_build_context_synchronously
                   context,
                   MaterialPageRoute(builder: (_) => const Login()),
                 );

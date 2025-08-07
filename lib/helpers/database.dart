@@ -19,7 +19,12 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    final db = await openDatabase(path, version: 1, onCreate: _createDB);
+
+    final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+    print('📋 Tablas encontradas en la base de datos: $tables');
+
+    return db;
   }
 
   Future _createDB(Database db, int version) async {
@@ -122,6 +127,7 @@ class DatabaseHelper {
     }
     return null;
   }
+
 
   Future close() async {
     final db = await instance.database;

@@ -3,7 +3,9 @@ import 'package:intellicook/services/auth_service.dart';
 import 'package:intellicook/modules/login.dart';
 import 'package:intellicook/modules/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  /*await AuthService.deleteDatabaseManually();*/ // Solo para desarrollo
   runApp(const MyApp());
 }
 
