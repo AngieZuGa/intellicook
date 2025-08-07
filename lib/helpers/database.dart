@@ -1,4 +1,5 @@
 import 'package:intellicook/models/ingredient.dart';
+import 'package:intellicook/models/user.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -30,6 +31,30 @@ class DatabaseHelper {
         unit TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+    ''');
+
+    await db.execute('''
+    CREATE TABLE favorites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      recipe_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      image TEXT NOT NULL,
+      ready_in_minutes INTEGER NOT NULL,
+      difficulty TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+    ''');
   }
 
   Future<int> insertIngredient(Ingredient ingredient) async {
@@ -56,6 +81,46 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [ingredient.id],
     );
+  }
+
+  Future<int> insertUser(User user) async {
+    final db = await instance.database;
+    return await db.insert('users', user.toMap());
+  }
+
+  Future<User?> getUserByEmail(String email) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return User.fromMap(result.first);
+    }
+    return null;
+  }
+
+  Future<bool> emailExists(String email) async {
+    final user = await getUserByEmail(email);
+    return user != null;
+  }
+
+  Future<User?> authenticateUser(String email, String password) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'users',
+      where: 'email = ? AND password = ?',
+      whereArgs: [email, password],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return User.fromMap(result.first);
+    }
+    return null;
   }
 
   Future close() async {

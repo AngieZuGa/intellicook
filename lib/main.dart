@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intellicook/modules/onboarding.dart';
+import 'package:intellicook/services/auth_service.dart';
+import 'package:intellicook/modules/login.dart';
+import 'package:intellicook/modules/home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -8,14 +10,36 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'IntelliCook',
       theme: ThemeData(primarySwatch: Colors.orange),
-      home: Onboarding(),
+      home: const AuthWrapper(),
     );
   }
 }
 
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: AuthService.isLoggedIn(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.data == true) {
+          return const HomeScreen();
+        } else {
+          return const Login();
+        }
+      },
+    );
+  }
+}
