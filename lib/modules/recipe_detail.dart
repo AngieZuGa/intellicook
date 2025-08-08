@@ -1,4 +1,5 @@
 // lib/modules/recipe_detail.dart (versión mejorada)
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intellicook/models/recipe.dart';
 import 'package:intellicook/helpers/database.dart';
@@ -18,15 +19,51 @@ class _RecipeDetailState extends State<RecipeDetail> {
   bool isLoading = true;
   Map<String, dynamic>? recipeInstructions;
 
+  Socket? clienteConectado;
+  String _estadoConexion = 'Esperando conexión del smartwatch...';
+
   @override
   void initState() {
     super.initState();
     _checkIfFavorite();
     _loadRecipeInstructions();
+    _iniciarServidorSmartwatch();
+  }
+
+  void _iniciarServidorSmartwatch() async {
+    final server = await ServerSocket.bind(InternetAddress.anyIPv4, 4040);
+    print('📱 Servidor en celular escuchando en puerto 8888');
+
+    server.listen((Socket socket) {
+      print('⌚ Smartwatch conectado desde: ${socket.remoteAddress.address}');
+      setState(() {
+        clienteConectado = socket;
+        _estadoConexion = 'Smartwatch conectado';
+      });
+    });
+  }
+
+  // Envía mensaje al smartwatch
+  void _enviarNotificacionAlSmartwatch(String mensaje) async {
+    if (clienteConectado != null) {
+      try {
+        clienteConectado!.write(mensaje);
+        await clienteConectado!.flush();
+        print('✅ Notificación enviada al smartwatch');
+      } catch (e) {
+        print('❌ Error al enviar: $e');
+        setState(() => _estadoConexion = 'Error al enviar');
+      }
+    } else {
+      print('❌ No hay smartwatch conectado');
+      setState(() => _estadoConexion = 'Ningún smartwatch conectado');
+    }
   }
 
   Future<void> _checkIfFavorite() async {
-    final favorite = await DatabaseHelper.instance.isFavoriteRecipe(widget.recipe.id);
+    final favorite = await DatabaseHelper.instance.isFavoriteRecipe(
+      widget.recipe.id,
+    );
     setState(() {
       isFavorite = favorite;
     });
@@ -34,7 +71,9 @@ class _RecipeDetailState extends State<RecipeDetail> {
 
   Future<void> _loadRecipeInstructions() async {
     try {
-      final instructions = await SpoonacularService.getRecipeInstructions(widget.recipe.id);
+      final instructions = await SpoonacularService.getRecipeInstructions(
+        widget.recipe.id,
+      );
       setState(() {
         recipeInstructions = instructions;
         isLoading = false;
@@ -51,24 +90,24 @@ class _RecipeDetailState extends State<RecipeDetail> {
       if (isFavorite) {
         await DatabaseHelper.instance.deleteFavoriteRecipe(widget.recipe.id);
         // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Eliminado de favoritos')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Eliminado de favoritos')));
       } else {
         await DatabaseHelper.instance.insertFavoriteRecipe(widget.recipe);
         // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Agregado a favoritos')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Agregado a favoritos')));
       }
       setState(() {
         isFavorite = !isFavorite;
       });
     } catch (e) {
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -105,10 +144,7 @@ class _RecipeDetailState extends State<RecipeDetail> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black54,
-                        ],
+                        colors: [Colors.transparent, Colors.black54],
                       ),
                     ),
                   ),
@@ -129,6 +165,12 @@ class _RecipeDetailState extends State<RecipeDetail> {
             padding: EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                Text(
+                  '📡 Estado conexión: $_estadoConexion',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                SizedBox(height: 16),
+
                 // Información básica
                 Card(
                   child: Padding(
@@ -155,9 +197,9 @@ class _RecipeDetailState extends State<RecipeDetail> {
                     ),
                   ),
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Ingredientes disponibles
                 if (widget.recipe.usedIngredients.isNotEmpty) ...[
                   Text(
@@ -172,16 +214,21 @@ class _RecipeDetailState extends State<RecipeDetail> {
                   Card(
                     child: Column(
                       children: widget.recipe.usedIngredients
-                          .map((ingredient) => ListTile(
-                                leading: Icon(Icons.check_circle, color: Colors.green),
-                                title: Text(ingredient),
-                              ))
+                          .map(
+                            (ingredient) => ListTile(
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
+                              title: Text(ingredient),
+                            ),
+                          )
                           .toList(),
                     ),
                   ),
                   SizedBox(height: 16),
                 ],
-                
+
                 // Ingredientes faltantes
                 if (widget.recipe.missedIngredients.isNotEmpty) ...[
                   Text(
@@ -196,26 +243,25 @@ class _RecipeDetailState extends State<RecipeDetail> {
                   Card(
                     child: Column(
                       children: widget.recipe.missedIngredients
-                          .map((ingredient) => ListTile(
-                                leading: Icon(Icons.cancel, color: Colors.red),
-                                title: Text(ingredient),
-                              ))
+                          .map(
+                            (ingredient) => ListTile(
+                              leading: Icon(Icons.cancel, color: Colors.red),
+                              title: Text(ingredient),
+                            ),
+                          )
                           .toList(),
                     ),
                   ),
                   SizedBox(height: 16),
                 ],
-                
+
                 // Instrucciones
                 Text(
                   'Instrucciones de preparación 👨‍🍳',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
-                
+
                 if (isLoading)
                   Card(
                     child: Padding(
@@ -235,9 +281,9 @@ class _RecipeDetailState extends State<RecipeDetail> {
                       ),
                     ),
                   ),
-                
+
                 SizedBox(height: 32),
-                
+
                 // Botón de acción
                 if (widget.recipe.missedIngredients.isEmpty)
                   ElevatedButton.icon(
@@ -249,8 +295,15 @@ class _RecipeDetailState extends State<RecipeDetail> {
                       minimumSize: Size(double.infinity, 50),
                     ),
                     onPressed: () {
+                      final mensaje =
+                          '⌚ Es hora de cocinar: ${widget.recipe.title}';
+                      _enviarNotificacionAlSmartwatch(mensaje);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('¡Disfruta cocinando ${widget.recipe.title}!')),
+                        SnackBar(
+                          content: Text(
+                            '¡Disfruta cocinando ${widget.recipe.title}!',
+                          ),
+                        ),
                       );
                     },
                   )
@@ -280,14 +333,8 @@ class _RecipeDetailState extends State<RecipeDetail> {
       children: [
         Icon(icon, color: Colors.orange),
         SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
